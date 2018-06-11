@@ -58,33 +58,54 @@ public:
 
     virtual SaberStatus compute_output_shape(const Input_v& input, \
         Output_v &output, Param_t& param) override {
+       
 
         Shape output_shape;
-        output_shape.resize(param.shape_params.size());
+        if (input.size() == 1) {
+            output_shape.resize(param.shape_params.size());
 
-        CHECK_EQ(input[0]->is_continue_mem(), true) << "input tensor must not have roi";
+            CHECK_EQ(input[0]->is_continue_mem(), true) << "input tensor must not have roi";
 
-        Shape input_shape = input[0]->valid_shape();
-        int valid_size = input[0]->valid_size();
-        int infer_axis = -1;
-        int count_axis = 1;
-        for (int i = 0; i < param.shape_params.size(); ++i) {
-            if (param.shape_params[i] == 0){
-                CHECK_LT(i, input_shape.size()) << "wrong parameters, exceed input dims";
-                output_shape[i] = input_shape[i];
-                count_axis *= input_shape[i];
-            } else if (param.shape_params[i] > 0){
-                output_shape[i] = param.shape_params[i];
-                count_axis *= param.shape_params[i];
-            } else {
-                output_shape[i] = -1;
-                infer_axis = i;
+            Shape input_shape = input[0]->valid_shape();
+            int valid_size = input[0]->valid_size();
+            int infer_axis = -1;
+            int count_axis = 1;
+            for (int i = 0; i < param.shape_params.size(); ++i) {
+                if (param.shape_params[i] == 0){
+                    CHECK_LT(i, input_shape.size()) << "wrong parameters, exceed input dims";
+                    output_shape[i] = input_shape[i];
+                    count_axis *= input_shape[i];
+                } else if (param.shape_params[i] > 0){
+                    output_shape[i] = param.shape_params[i];
+                    count_axis *= param.shape_params[i];
+                } else {
+                    output_shape[i] = -1;
+                    infer_axis = i;
+                }
             }
+            if (infer_axis >= 0){
+                output_shape[infer_axis] = valid_size / count_axis;
+            }
+        } else {
+            Tensor<X86, AK_FLOAT, NCHW> reshape_tensor;
+            reshape_tensor.reshape(input[1]->valid_shape());
+            reshape_tensor.copy_from(*input[1]);
+            auto data = reshape_tensor.data();
+            int index = 0;
+            for (int i = 0; i < reshape_tensor.valid_size(); i++) {
+                 if (data[i] != -1) {
+                      output_shape[i] = data[i];
+                 } else {
+                      output_shape[i] = 1;
+                      index = i;
+                 }
+            }
+            for (int  i = reshape_tensor.valid_size(); i < output[0]->dims(); i++){
+                output_shape[i] = 1;
+            }
+            output_shape[index] = input[0]->valid_size() / output_shape.count();
         }
 
-        if (infer_axis >= 0){
-            output_shape[infer_axis] = valid_size / count_axis;
-        }
         return output[0]->set_shape(output_shape);//, output_shape, offset);
     }
     //Reshape ops do nothing
