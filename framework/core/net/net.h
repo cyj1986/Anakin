@@ -18,6 +18,7 @@
 
 #include "framework/graph/graph.h"
 #include "framework/core/net/operator_func.h"
+#include "framework/core/net/calibrator.h"
 
 
 namespace anakin {
@@ -34,13 +35,13 @@ public:
      *  \brief Construct a net by graph. 
      *  This construction should be use in thread call and make sure thread safety.
      */
-    explicit Net(graph::Graph<Ttype, Dtype, Ptype>&, bool need_summary = false);
+    explicit Net(graph::Graph<Ttype, Dtype, Ptype>&, bool need_summary = false, Calibrator<Ttype, Dtype>* calibrator = nullptr);
 
     /**
      *  \brief Construct a net by graph, init with specified context.
      *  This construction should be use in thread call and make sure thread safety.
      */
-    explicit Net(graph::Graph<Ttype, Dtype, Ptype>&, OpContextPtr<Ttype> ctx, bool need_summary = false);
+    explicit Net(graph::Graph<Ttype, Dtype, Ptype>&, OpContextPtr<Ttype> ctx, bool need_summary = false, Calibrator<Ttype, Dtype>* calibrator = nullptr);
 
     ~Net();
 
@@ -122,6 +123,10 @@ private:
      *  \brief Initial context environments.
      */
     Status init_env(graph::Graph<Ttype, Dtype, Ptype>&);
+    /**
+     * \brief Generate Calibration Tabel.
+     */
+    Status generate_calibration_table(); 
 
 private:
     ///< executor for operators in node.
@@ -137,8 +142,11 @@ private:
     std::vector<Tensor4dPtr<Ttype, Dtype> > _in_tensor_list;
     ///< A list of out tensor.
     std::vector<Tensor4dPtr<Ttype, Dtype> > _out_tensor_list;
+    ///< all tensor names 
+    std::vector<std::string > _tensor_name_list;
 
     bool _need_summary{false};
+    Calibrator<Ttype, Dtype>* _calibrator{nullptr};
 #ifdef ENABLE_OP_TIMER
     std::vector<float> _op_time;
     std::vector<std::string> _op_param;

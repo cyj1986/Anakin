@@ -45,18 +45,20 @@ Net<Ttype, Dtype, Ptype, RunType>::Net(bool need_summary) {
 }
 
 template<typename Ttype, DataType Dtype, Precision Ptype, OpRunType RunType>
-Net<Ttype, Dtype, Ptype, RunType>::Net(graph::Graph<Ttype, Dtype, Ptype>& graph, bool need_summary) {
+Net<Ttype, Dtype, Ptype, RunType>::Net(graph::Graph<Ttype, Dtype, Ptype>& graph, bool need_summary,  Calibrator<Ttype, Dtype>* calibrator) {
     _graph_p = new graph::Graph<Ttype, Dtype, Ptype>();
     _need_summary = need_summary;
+    _calibrator = calibrator;
     //init_env(graph);
     init(graph);
 }
 
 template<typename Ttype, DataType Dtype, Precision Ptype, OpRunType RunType>
 Net<Ttype, Dtype, Ptype, RunType>::Net(\
-    graph::Graph<Ttype, Dtype, Ptype>& graph, OpContextPtr<Ttype> ctx, bool need_summary) {
+    graph::Graph<Ttype, Dtype, Ptype>& graph, OpContextPtr<Ttype> ctx, bool need_summary, Calibrator<Ttype, Dtype>* calibrator) {
     _graph_p = new graph::Graph<Ttype, Dtype, Ptype>();
     _need_summary = need_summary;
+    _calibrator = calibrator;
     //init_env(graph);
     init(graph, ctx);
 }
@@ -115,6 +117,7 @@ void Net<Ttype, Dtype, Ptype, RunType>::init(graph::Graph<Ttype, Dtype, Ptype>& 
             DLOG(INFO) << "  <= find out arc : " << edge_it->bottom() << "  -->  " << edge_it->top();
             op_func.outs.push_back(edge_it->weight().get());
             op_func.out_lanes.push_back(edge_it->lane());
+            _tensor_name_list.push_back(edge_it->name());
         }
         op_func.current_lane = (*_graph_p)[node_name]->lane();
         op_func.need_sync = (*_graph_p)[node_name]->need_wait();
@@ -130,6 +133,9 @@ void Net<Ttype, Dtype, Ptype, RunType>::init(graph::Graph<Ttype, Dtype, Ptype>& 
 
     // init memory of _graph_p
     init_memory();
+    if (_calibrator) {
+        generate_calibration_table();
+    }
 }
 
 
@@ -249,6 +255,7 @@ void Net<Ttype, Dtype, Ptype, RunType>::init(graph::Graph<Ttype, Dtype, Ptype>& 
             DLOG(INFO) << "  <= find out arc : " << edge_it->bottom() << "  -->  " << edge_it->top();
             op_func.outs.push_back(edge_it->weight().get()); 
             op_func.out_lanes.push_back(edge_it->lane());
+            _tensor_name_list.push_back(edge_it->name());
         }
         op_func.current_lane = (*_graph_p)[node_name]->lane();
         op_func.need_sync = (*_graph_p)[node_name]->need_wait();
@@ -321,6 +328,9 @@ void Net<Ttype, Dtype, Ptype, RunType>::init(graph::Graph<Ttype, Dtype, Ptype>& 
 #endif
     }
 #endif
+    if (_calibrator) {
+        generate_calibration_table();
+    }
 }
 
 template<typename Ttype, DataType Dtype, Precision Ptype, OpRunType RunType>
@@ -464,6 +474,88 @@ void Net<Ttype, Dtype, Ptype, RunType>::prediction() {
 #endif
 #endif //debug
     }
+}
+template<typename Ttype, DataType Dtype, Precision Ptype, OpRunType RunType>
+Status Net<Ttype, Dtype, Ptype, RunType>::generate_calibration_table() {
+    int tensor_num = _tensor_name_list.size();
+    _calibrator->init_statistics(tensor_num);
+    get_in_list();
+    /*get max data*/
+    int batch_id = 0;
+    while (true) {
+        int num = _calibrator->get_batch_data(_in_tensor_list);
+         LOG(INFO) <<"batch_id"<< batch_id++;
+        //int num = 0;
+        if (num == 0) {
+            break;
+        }
+        int tensor_id = 0;
+        for (auto& executer : _exec_funcs) {
+            if (RunType == OpRunType::SYNC || executer.need_sync) {
+                for(int i = 0; i < executer.ins.size(); i++) {
+                    // sync event record in multi_stream
+                    executer.ins[i]->sync();
+                }
+            }
+            if (executer.op_name != "Input") {
+                executer.infer_shape();
+                executer.launch();
+            }
+
+            for(int i = 0; i < executer.outs.size(); i++) {
+                executer.outs[i]->record_event(executer.ctx_p->get_compute_stream());
+                executer.outs[i]->sync();
+            }
+#ifdef  USE_CUDA
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaPeekAtLastError());
+#endif 
+	        for (auto out : executer.outs) {
+                //record_tensor_to_file(*out, (_tensor_name_list[tensor_id] + ".txt").c_str());
+                auto max_data = _calibrator->max_data(out, tensor_id);
+                tensor_id++;
+            }
+        }
+    }
+    /*reset batch_stream*/
+    _calibrator->reset_data_stream();
+    /*get_histgram*/
+    while (true) {
+        int num = _calibrator->get_batch_data(_in_tensor_list);
+        //int num = 0;
+        if (num == 0) {
+            break;
+        }
+        int tensor_id = 0;
+        for (auto& executer : _exec_funcs) {
+            if (RunType == OpRunType::SYNC || executer.need_sync) {
+                for(int i = 0; i < executer.ins.size(); i++) {
+                    // sync event record in multi_stream
+                    executer.ins[i]->sync();
+                }
+            }
+            if (executer.op_name != "Input") {
+                executer.infer_shape();
+                executer.launch();
+            }
+
+            for(int i = 0; i < executer.outs.size(); i++) {
+                executer.outs[i]->record_event(executer.ctx_p->get_compute_stream());
+                executer.outs[i]->sync();
+            }
+#ifdef  USE_CUDA
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaPeekAtLastError());
+#endif 
+	        for (auto out : executer.outs) {
+                _calibrator->histgram(out, tensor_id);
+                tensor_id++;
+            }
+        }
+    }
+    /*generate calibrator table*/
+    _calibrator->generate_calibrator_table(_tensor_name_list);
+    return Status::OK();
 }
 
 template<typename Ttype, DataType Dtype, Precision Ptype, OpRunType RunType>
