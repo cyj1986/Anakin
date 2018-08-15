@@ -263,8 +263,8 @@ void Calibrator<Ttype, Dtype>::generate_calibrator_table(std::vector<std::string
             min_kl_divergence  = min_kl_divergence > kl ? kl : min_kl_divergence;
             start_num += hist[i];
         }
-        //_scale_map.insert(std::pair<std::string, dtype>(tensor_name_list[tensor_id], _max_vec[tensor_id] /_bin_num *  thresh));
-        _scale_map.insert(std::pair<std::string, dtype>(tensor_name_list[tensor_id], thresh));
+        _scale_map.insert(std::pair<std::string, dtype>(tensor_name_list[tensor_id], _max_vec[tensor_id] /_bin_num *  thresh));
+        //_scale_map.insert(std::pair<std::string, dtype>(tensor_name_list[tensor_id], thresh));
         tensor_id++;
     }
     write_calibrator();

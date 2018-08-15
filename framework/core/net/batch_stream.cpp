@@ -78,7 +78,8 @@ int BatchStream<Ttype, Dtype>::get_batch_data(std::vector<Tensor4dPtr<Ttype, Dty
         data += image_size * cur_num;
      }
      if (num != 0) {
-         outs[0]->reshape(Shape{num, _channel, _height,_width});
+         //outs[0]->reshape(Shape{num, _channel, _height,_width});
+         outs[0]->reshape(Shape{num, _height,_width, _channel});
      }
      return num;
 }

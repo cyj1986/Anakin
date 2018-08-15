@@ -146,6 +146,7 @@ private:
     std::vector<std::string > _tensor_name_list;
 
     bool _need_summary{false};
+    ///< calibrator for int8
     Calibrator<Ttype, Dtype>* _calibrator{nullptr};
 #ifdef ENABLE_OP_TIMER
     std::vector<float> _op_time;
