@@ -64,8 +64,13 @@ public:
                                              Output_v &output, Param_t &param) override {
 
         Shape output_shape({input[0]->valid_size(), param.emb_dim, 1, 1});
-        output[0]->set_seq_offset(input[0]->get_seq_offset());
-        return output[0]->set_shape(output_shape);
+        CHECK_EQ(output.size(), param.num_direct) 
+                << "output tensor num is not equal to the direct number in param";
+        for (int i = 0; i < output.size(); i++) {
+            output[i]->set_seq_offset(input[0]->get_seq_offset());
+            output[i]->set_shape(output_shape);
+        }
+        return SaberSuccess;
     }
 
     virtual SaberStatus init_impl(ImplEnum implenum) override {

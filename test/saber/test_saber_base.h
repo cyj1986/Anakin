@@ -107,9 +107,9 @@ public:
             in_h.push_back(d_ih);
         }
         for(int i = 0; i < _op_output_num; ++i){
-            TensorD *d_od = new TensorD(new_shape_v[i]);
-            TensorH *d_oh = new TensorH(new_shape_v[i]);
-            TensorH *d_ohd = new TensorH(new_shape_v[i]);
+            TensorD *d_od = new TensorD();
+            TensorH *d_oh = new TensorH();
+            TensorH *d_ohd = new TensorH();
             out_d.push_back(d_od);
             out_h.push_back(d_oh);
             out_hd.push_back(d_ohd);
