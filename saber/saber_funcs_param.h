@@ -2039,6 +2039,35 @@ namespace anakin {
             int top_k{1};
             int feat_map_num{1};
         };
+        
+        template <typename TargetType>
+        struct TopKAvgPoolingParam {
+            TopKAvgPoolingParam() = default;
+            TopKAvgPoolingParam(std::vector<int> top_ks_in, 
+                                int feat_map_num_in,
+                                bool is_pooling_by_row_in):
+                top_ks(top_ks_in), feat_map_num(feat_map_num_in),
+                is_pooling_by_row(is_pooling_by_row_in) {};
+            TopKAvgPoolingParam(const TopKAvgPoolingParam& right):
+                top_ks(right.top_ks),
+                feat_map_num(right.feat_map_num),
+                is_pooling_by_row(right.is_pooling_by_row) {}
+            TopKAvgPoolingParam& operator=(const TopKAvgPoolingParam& right) {
+                top_ks = right.top_ks;
+                feat_map_num = right.feat_map_num;
+                is_pooling_by_row = right.is_pooling_by_row;
+            }
+            bool operator==(const TopKAvgPoolingParam& right) {
+                bool flag = true;
+                flag = flag && (top_ks == right.top_ks);
+                flag = flag && (feat_map_num == right.feat_map_num);
+                flag = flag && (is_pooling_by_row == right.is_pooling_by_row);
+                return flag;
+            }
+            std::vector<int> top_ks;
+            int feat_map_num{1};
+            bool is_pooling_by_row{true};
+        };
 
     }
 }

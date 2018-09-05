@@ -73,9 +73,9 @@ public:
         }
         
         for(int i = 0; i < _op_output_num; ++i){
-            TensorD *d_od = new TensorD(new_shape);
-            TensorH *d_oh = new TensorH(new_shape);
-            TensorH *d_ohd = new TensorH(new_shape);
+            TensorD *d_od = new TensorD();
+            TensorH *d_oh = new TensorH();
+            TensorH *d_ohd = new TensorH();
             out_d.push_back(d_od);
             out_h.push_back(d_oh);
             out_hd.push_back(d_ohd);
@@ -176,7 +176,7 @@ public:
         clear_datas();
         std::vector<Shape> shape_v;
         for (int i=0; i<_op_input_num; ++i){
-            shape_v.push_back(input[0] -> valid_shape());
+            shape_v.push_back(input[i] -> valid_shape());
         }
         add_inputs_shape(shape_v);
         for(int i = 0; i < _op_input_num; ++i)
@@ -255,7 +255,7 @@ public:
         for(int input_index = 0; input_index < _inputs_dev.size(); ++input_index){
             _base_op.init(_inputs_dev[input_index], _outputs_dev[input_index],
                           _params[param_index], strategy, implenum, ctx);
-            for(int iter=0; iter<100; ++iter){
+            for(int iter=0; iter<1; ++iter){
                 _outputs_dev[input_index][0]->copy_from(*_outputs_host[input_index][0]);
                 status= _base_op(_inputs_dev[input_index], _outputs_dev[input_index],
                                  _params[param_index], ctx);
