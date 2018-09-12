@@ -2069,6 +2069,64 @@ namespace anakin {
             bool is_pooling_by_row{true};
         };
 
+        template <typename TargetType>
+        struct MatchMatrixParam {
+            typedef Tensor<TargetType> opTensor;
+            MatchMatrixParam() = default;
+            MatchMatrixParam(int dim_in_in,
+                             int dim_t_in,
+                             opTensor* weight):
+                dim_in(dim_in_in),
+                dim_t(dim_t_in),
+                linear_term(false),
+                bias_term(false),
+                weight_tensor(weight) {}
+            MatchMatrixParam(int dim_in_in, 
+                             int dim_t_in,
+                             bool linear_term_in,
+                             bool bias_term_in,
+                             opTensor* weight):
+                dim_in(dim_in_in),
+                dim_t(dim_t_in),
+                linear_term(linear_term_in),
+                bias_term(bias_term_in),
+                weight_tensor(weight) {}
+            MatchMatrixParam(const MatchMatrixParam& right):
+                dim_in(right.dim_in),
+                dim_t(right.dim_t),
+                linear_term(right.linear_term),
+                bias_term(right.bias_term),
+                weight_tensor(right.weight_tensor) {}
+            MatchMatrixParam& operator=(const MatchMatrixParam& right) {
+                dim_in = right.dim_in;
+                dim_t = right.dim_t;
+                linear_term = right.linear_term;
+                bias_term = right.bias_term;
+                weight_tensor = right.weight_tensor;
+            }
+            bool operator==(const MatchMatrixParam& right) {
+                bool flag = true;
+                flag = flag && (dim_in == right.dim_in);
+                flag = flag && (dim_t == right.dim_t);
+                flag = flag && (linear_term == right.linear_term);
+                flag = flag && (bias_term == right.bias_term);
+                flag = flag && (weight_tensor == right.weight_tensor);
+                return flag;
+            }
+            inline const opTensor* weight() {
+                return weight_tensor;
+            }
+            inline opTensor* mutable_weight() {
+                return weight_tensor;
+            }
+            int dim_in{1};
+            int dim_t{2};
+            bool linear_term{false};
+            bool bias_term{false};
+            private:
+            opTensor* weight_tensor{nullptr};
+        };
+
     }
 }
 #endif //SABER_FUNCS_PARAM_H

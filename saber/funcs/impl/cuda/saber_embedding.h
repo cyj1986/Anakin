@@ -46,6 +46,9 @@ public:
     virtual SaberStatus dispatch(const std::vector<Tensor<NV>*>& inputs,
                           std::vector<Tensor<NV>*>& outputs,
                           EmbeddingParam<NV>& param);
+private:
+    Tensor<NV> _word_seq_map;
+    Tensor<NV> _seq_offset;
 };
 
 
